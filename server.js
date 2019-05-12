@@ -51,6 +51,7 @@ async.series([
         port: 2443
       };
       var i = 0;
+      var interval = undefined;
       d.app = express();
       d.server = https.createServer(options, d.app);
       d.io = require('socket.io')(d.server, {'pingInterval': pingInterval, 'pingTimeout': pingTimeout});
@@ -62,11 +63,12 @@ async.series([
         });
         socket.on('disconnect', function () {
           log.info(d.name,"Socket disconnected");
+          if (interval) { clearInterval(clearInterval) };
         });
         socket.on('error', function (err) {
           log.error(d.name,"Error: " + err);
         });
-        setInterval(() => {
+        interval = setInterval(() => {
           socket.emit('message', 'Message number ' + (++i));
         }, 1000);
       });
