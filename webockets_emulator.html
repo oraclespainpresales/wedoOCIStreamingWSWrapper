@@ -19,7 +19,7 @@
 </style>
 
 <!--<script src="http://localhost:9009/ws/socket.io.js"></script>-->
-<script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
 
 <script language="javascript" type="text/javascript">
 
@@ -28,7 +28,7 @@
 	var wsUri;
 	var output;
 	var wsserver = "";
-	var localwsserver = "helper.digitalpracticespain.com";
+	var localwsserver = "infra.wedoteam.io";
 	var payload = new Array();
 
 	function getParameterByName(name) {
@@ -53,10 +53,9 @@
 
 	function connect() {
 
-	  namespaces = document.forms["NamespacesForm"]["namespaces"].value.split(',');
 		protocol = document.forms["ConnectForm"]["protocol"].value;
 		hostname = document.forms["ConnectForm"]["hostname"].value;
-		hostname += ":" + document.forms["ConnectForm"]["demozone"].value;
+		hostname += ":" + "2443";
 		path = document.forms["ConnectForm"]["path"].value;
 		wsUri = protocol + "://" + hostname;
 		writeToScreen("Connecting to " + wsUri + path);
@@ -95,12 +94,6 @@
 			writeToScreen("[EVENT] disconnect", "blueviolet");
 			onClose()
 		});
-		namespaces.forEach(function(namespace) {
-			writeToScreen("Subscribing to namespace: " + namespace, "gray");
-			websocket.on(namespace, function(msg, callback) {
-				onMessage(namespace, msg, callback);
-			});
-		});
 	}
 
 	function disconnect() {
@@ -111,16 +104,12 @@
 	function onOpen() {
 		writeToScreen("Successfully connected to " + wsUri, "green");
 		document.getElementById('connectButton').disabled = true;
-		document.getElementById('namespaces').disabled = true;
-		document.getElementById('demozone').disabled = true;
 		document.getElementById('disconnectButton').disabled = false;
 	}
 
 	function onClose() {
 		writeToScreen("Disconnected from " + wsUri, "red");
 		document.getElementById('connectButton').disabled = false;
-		document.getElementById('namespaces').disabled = false;
-		document.getElementById('demozone').disabled = false;
 		document.getElementById('disconnectButton').disabled = true;
 	}
 
@@ -187,18 +176,9 @@
 
 <p>
 	<form name="ConnectForm">
-		<input class="courier-font" name="protocol" type="text" size="3" disabled=false value='ws'> <text class="courier-font">://</text>
+		<input class="courier-font" name="protocol" type="text" size="3" disabled=false value='wss'> <text class="courier-font">://</text>
 		<input class="courier-font" name="hostname" type="text" size="40">
-		<text class="courier-font">:</text>
-		<select id="demozone">
-			<option value="10078">Madrid</option>
-			<option value="10079">Barcelona</option>
-			<option value="10080">Amsterdam</option>
-			<option value="10081">Milan</option>
-			<option value="10082">Paris</option>
-			<option value="10083">Lisbon</option>
-			<option value="10084">Berlin</option>
-		</select>
+		<text class="courier-font">:2443</text>
 		<input class="courier-font" name="path" type="text" size="11" disabled=true value='/socket.io'>
 		<input type="submit" id="connectButton" formaction="javascript:connect();" value="Connect">
 		<input type="submit" id="disconnectButton" disabled=true formaction="javascript:disconnect();" value="Disconnect">
@@ -208,17 +188,6 @@
 </p>
 <p>
 
-<form name="NamespacesForm">
-<table class="courier-font">
-  <tr>
-		<td>
-			<span>Namespaces subscribed: </span>
-			<input class="courier-font" id="namespaces" name="namespaces" type="text" size="60" value='speed,highspeed,regularspeed,lap,offtrack,race,drone'>
-		</td>
-  </tr>
-</table>
-</form>
-<br>
 <form id=ResetOutput name="ResetOutput">
 	<span class="courier-font">OUTPUT WINDOW:</span>
 	<input type="submit" id="clearButton" formaction="javascript:clear();" value="Clear">

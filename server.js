@@ -55,6 +55,7 @@ async.series([
       d.io = require('socket.io')(d.server, {'pingInterval': pingInterval, 'pingTimeout': pingTimeout});
       d.io.on('connection', function (socket) {
         log.info(d.name,"Connected!!");
+        socket.emit('message', 'hello world');
         socket.conn.on('heartbeat', function() {
           log.verbose(d.name,'heartbeat');
         });
