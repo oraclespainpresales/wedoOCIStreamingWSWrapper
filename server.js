@@ -63,7 +63,7 @@ async.series([
         });
         socket.on('disconnect', function () {
           log.info(d.name,"Socket disconnected");
-          if (interval) { clearInterval(clearInterval) };
+          if (interval) { clearInterval(interval) };
         });
         socket.on('error', function (err) {
           log.error(d.name,"Error: " + err);
