@@ -50,6 +50,7 @@ async.series([
       var d = {
         port: 2443
       };
+      var i = 0;
       d.app = express();
       d.server = https.createServer(options, d.app);
       d.io = require('socket.io')(d.server, {'pingInterval': pingInterval, 'pingTimeout': pingTimeout});
@@ -65,6 +66,9 @@ async.series([
         socket.on('error', function (err) {
           log.error(d.name,"Error: " + err);
         });
+        setInterval(() => {
+          socket.emit('message', 'Message number ' + (++i));
+        }, 1000);
       });
       d.server.listen(d.port, function() {
         log.info("","Created WS server at port: " + d.port);
