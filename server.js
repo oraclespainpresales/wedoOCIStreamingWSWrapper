@@ -69,7 +69,9 @@ async.series([
           log.error(d.name,"Error: " + err);
         });
         interval = setInterval(() => {
-          socket.emit('message', 'Message number ' + (++i));
+          var msg = 'Message number ' + (++i);
+          console.log("Emitting: " + msg)
+          socket.emit('message', msg);
         }, 1000);
       });
       d.server.listen(d.port, function() {
