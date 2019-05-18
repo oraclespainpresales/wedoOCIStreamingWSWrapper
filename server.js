@@ -67,6 +67,12 @@ async.series([
         socket.on('error', function (err) {
           log.error(d.name,"Error: " + err);
         });
+
+        var msg = {
+          key: "MADRID,3344,PIZZA ORDERED",
+          value: "test message"
+        }
+        socket.emit('message', JSON.stringify(msg));
         /**
         interval = setInterval(() => {
           var msg = 'Message number ' + (++i);
