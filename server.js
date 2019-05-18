@@ -127,8 +127,9 @@ async.series( {
         }, 1000);
         **/
       });
-      d.server.listen(d.port, function() {
-        log.info(WEBSOCKET,"Created WS server at port: " + d.port + " for demozone: " + d.demozone);
+      d.server.listen(d.websocketport, function() {
+        log.info(WEBSOCKET,"Created WS server at port: " + d.websocketport + " for demozone: " + d.demozone);
+        console.log(d);
         next();
       });
     }, (err) => {
