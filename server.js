@@ -57,7 +57,6 @@ async.series([
       d.io = require('socket.io')(d.server, {'pingInterval': pingInterval, 'pingTimeout': pingTimeout});
       d.io.on('connection', function (socket) {
         log.info(d.name,"Connected!!");
-        socket.emit('message', 'hello world');
         socket.conn.on('heartbeat', function() {
           log.verbose(d.name,'heartbeat');
         });
@@ -68,11 +67,13 @@ async.series([
         socket.on('error', function (err) {
           log.error(d.name,"Error: " + err);
         });
+        /**
         interval = setInterval(() => {
           var msg = 'Message number ' + (++i);
           console.log("Emitting: " + msg)
           socket.emit('message', msg);
         }, 1000);
+        **/
       });
       d.server.listen(d.port, function() {
         log.info("","Created WS server at port: " + d.port);
