@@ -5,6 +5,7 @@ var express = require('express')
   , https = require('https')
   , async = require('async')
   , _ = require('lodash')
+  , restify = require('restify-clients')
   , log = require('npmlog-ts')
   , fs = require('fs')
 ;
@@ -22,50 +23,95 @@ const options = {
   key: fs.readFileSync("/u01/ssl/certificate.key").toString()
 };
 
+log.level = 'verbose';
 log.stream = process.stdout;
 log.timestamp = true;
 
-// Main handlers registration - BEGIN
-// Main error handler
-process.on('uncaughtException', function (err) {
-  log.info("","Uncaught Exception: " + err);
-  log.info("","Uncaught Exception: " + err.stack);
-});
-// Detect CTRL-C
-process.on('SIGINT', function() {
-  log.info("","Caught interrupt signal");
-  log.info("","Exiting gracefully");
-  process.exit(2);
-});
-// Main handlers registration - END
+const VERSION = "1.0"
+;
 
-log.level = 'verbose';
+const PROCESS   = "PROCESS"
+    , REST      = "REST"
+    , WEBSOCKET = "WEBSOCKET"
+    , DB        = "DB"
+;
+
+const DBHOST         = "https://apex.wedoteam.io"
+    , DBURI          = '/ords/pdb1/wedo/common'
+    , STREAMINGSETUP = '/streaming/setup'
+;
 
 const pingInterval = 25000
     , pingTimeout  = 60000
 ;
 
-async.series([
-    function(next) {
-      var d = {
-        port: 10101
-      };
+// Main handlers registration - BEGIN
+// Main error handler
+process.on('uncaughtException', function (err) {
+  log.info(PROCESS,"Uncaught Exception: " + err);
+  log.info(PROCESS,"Uncaught Exception: " + err.stack);
+});
+// Detect CTRL-C
+process.on('SIGINT', function() {
+  log.info(PROCESS,"Caught interrupt signal");
+  log.info(PROCESS,"Exiting gracefully");
+  process.exit(2);
+});
+// Main handlers registration - END
+
+// Initializing REST client BEGIN
+var dbClient = restify.createJsonClient({
+  url: DBHOST,
+  connectTimeout: 10000,
+  requestTimeout: 10000,
+  retry: false,
+  rejectUnauthorized: false,
+  headers: {
+    "content-type": "application/json",
+    "accept": "application/json"
+  }
+});
+// Initializing REST client END
+
+var demozones = _.noop();
+
+async.series( {
+  splash: (next) => {
+    log.info(PROCESS, "WEDO OCI Streaming - WebSockets Bridge - " + VERSION);
+    log.info(PROCESS, "Author: Carlos Casares <carlos.casares@oracle.com>");
+    next();
+  },
+  setup: (next) => {
+    log.verbose(DB, "Retrieving streaming setup for all demozones");
+    dbClient.get(DBURI + STREAMINGSETUP, (err, req, res, obj) => {
+      if (err) {
+        log.verbose(DB, "Error retrieving setup: %s", err.message);
+        next(err);
+        return;
+      }
+      var jBody = JSON.parse(res.body);
+      demozones = _.cloneDeep(jBody.items);
+      next();
+    });
+  },
+  websocket: (next) => {
+    async.eachSeries( demozones, (d, nextDemozone) => {
       var i = 0;
       var interval = undefined;
       d.app = express();
       d.server = https.createServer(options, d.app);
       d.io = require('socket.io')(d.server, {'pingInterval': pingInterval, 'pingTimeout': pingTimeout});
       d.io.on('connection', function (socket) {
-        log.info(d.name,"Connected!!");
+        log.info(d.demozone,"Connected!!");
         socket.conn.on('heartbeat', function() {
-          log.verbose(d.name,'heartbeat');
+          log.verbose(d.demozone,'heartbeat');
         });
         socket.on('disconnect', function () {
-          log.info(d.name,"Socket disconnected");
+          log.info(d.demozone,"Socket disconnected");
           if (interval) { clearInterval(interval) };
         });
         socket.on('error', function (err) {
-          log.error(d.name,"Error: " + err);
+          log.error(d.demozone,"Error: " + err);
         });
 
         var msg = {
@@ -82,13 +128,15 @@ async.series([
         **/
       });
       d.server.listen(d.port, function() {
-        log.info("","Created WS server at port: " + d.port);
+        log.info(WS,"Created WS server at port: " + d.port + " for demozone: " + d.demozone);
         next();
       });
-    }
-], function(err, results) {
+    }, (err) => {
+      next(err);
+    });
+  }
+}, (err, results) => {
   if (err) {
-    log.error("", err.message);
-    process.exit(2);
+    log.error("Error during initialization: " + err);
   }
 });
