@@ -203,6 +203,8 @@ async.series( {
                   });
                 },
                 sendMessages: (nextStreaming) => {
+                  console.log(messages);
+                  console.log(s.sessions);
                   if (messages.length > 0 && s.sessions.length > 0) {
                     _.each(messages, (message) => {
                       // Emit message to all connected clients
