@@ -159,6 +159,7 @@ async.series( {
             s.running = true;
             if (!s.cursor) {
               // No cursor, so we need to create one
+              log.verbose(STREAMING,"No cursors available");
               let result = createCursor(s);
               if (!result.value) {
                 log.error(STREAMING, "Error creating cursor: " + JSON.stringify(result));
@@ -207,11 +208,16 @@ async function createCursor(d) {
   var promise = new Promise((resolve, reject) => {
     let body = { partition: "0", type: "LATEST" };
     d.ociBridgeClient.post(STREAMINGCREATECURSOR.replace('{streamid}', d.streamid), body, (err, req, res, data) => {
+      console.log("returned");
       if (err) {
+        console.log("error");
+        console.log(err);
         reject(err);
       } else if (res.statusCode == 200) {
+        console.log("ok");
         resolve(data);
       } else {
+        console.log("ok with error");
         reject(res);
       }
     });
