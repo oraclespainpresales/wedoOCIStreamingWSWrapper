@@ -204,8 +204,8 @@ async.series( {
                       // Emit message to all connected clients
                       s.io.sockets.emit('message', JSON.stringify());
                     });
-                    nextStreaming();
                   }
+                  nextStreaming();
                 }
               }, (err, results) => {
                 if (err) {
