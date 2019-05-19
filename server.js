@@ -207,7 +207,7 @@ async.series( {
                   if (messages.length > 0) {
                     _.each(messages, (message) => {
                       // Emit message to all connected clients
-                      s.io.sockets.emit('message', JSON.stringify());
+                      s.io.sockets.emit('message', JSON.stringify(message));
                       log.verbose(STREAMING,"Messages successfully emitted...");
                     });
                   }
