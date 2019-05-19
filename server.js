@@ -130,7 +130,7 @@ async.series( {
       d.io.on('connection', (socket) => {
 
         console.log("++++++++++++++++++++++++++++++++++++");
-        console.log(d.io.sockets);
+        console.log(d.io.sockets.server);
         console.log("++++++++++++++++++++++++++++++++++++");
 
 
