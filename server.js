@@ -109,7 +109,7 @@ async.series( {
       var i = 0;
       d.interval = _.noop();
       d.cursor  = _.noop();
-      d.running = false;
+      d.running = "NO";
       d.app = express();
       d.server = https.createServer(options, d.app);
       d.ociBridgeClient = restify.createJsonClient({
@@ -145,12 +145,12 @@ async.series( {
           if (!d.interval) {
             log.info(d.demozone,"Starting message pooling interval");
             d.interval = setInterval((s) => {
-              if (s.running === true) {
+              if (s.running === "YES") {
                 // Previous interval is still running. Exit.
                 log.verbose(STREAMING,"ignoring...");
                 return;
               }
-              s.running = true;
+              s.running = "YES";
               let messages = [];
               async.series({
                 cursor: (nextStreaming) => {
@@ -211,7 +211,7 @@ async.series( {
                 if (err) {
                   log.error("Error during streaming process: " + err);
                 }
-                s.running = false;
+                s.running = "NO";
               });
             }, POOLINGINTERVAL, d);
           };
