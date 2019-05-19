@@ -23,6 +23,7 @@
     "lodash": "^4.17.11",
     "npmlog-ts": "0.0.1",
     "restify-clients": "^2.6.6",
+    "shortid": "^2.2.14",
     "socketio": "^1.0.0"
   }
 }

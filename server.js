@@ -1,13 +1,15 @@
 'use strict';
 
 // Module imports
-var express = require('express')
-  , https = require('https')
-  , async = require('async')
-  , _ = require('lodash')
-  , restify = require('restify-clients')
-  , log = require('npmlog-ts')
-  , fs = require('fs')
+const express = require('express')
+    , https = require('https')
+    , qs = require('querystring')
+    , async = require('async')
+    , _ = require('lodash')
+    , uuid = require('shortid')
+    , restify = require('restify-clients')
+    , log = require('npmlog-ts')
+    , fs = require('fs')
 ;
 
 // Instantiate classes & servers
@@ -33,16 +35,21 @@ const VERSION = "1.0"
 const PROCESS   = "PROCESS"
     , REST      = "REST"
     , WEBSOCKET = "WEBSOCKET"
+    , STREAMING = "STREAMING"
     , DB        = "DB"
 ;
 
-const DBHOST         = "https://apex.wedoteam.io"
-    , DBURI          = '/ords/pdb1/wedo/common'
-    , STREAMINGSETUP = '/streaming/setup'
+const DBHOST                = "https://apex.wedoteam.io"
+    , OCIBRIDGEHOST         = "https://local.infra.wedoteam.io:2443"
+    , DBURI                 = '/ords/pdb1/wedo/common'
+    , STREAMINGSETUP        = '/streaming/setup'
+    , STREAMINGCREATECURSOR = '/20180418/streams/{streamid}/cursors'
+    , STREAMINGPOOLMESSAGES = '/20180418/streams/{streamid}/messages'
+    , POOLINGINTERVAL       = 1000
 ;
 
-const pingInterval = 25000
-    , pingTimeout  = 60000
+const PINGINTERVAL = 25000
+    , PINGTIMEOUT  = 60000
 ;
 
 // Main handlers registration - BEGIN
@@ -97,39 +104,73 @@ async.series( {
   websocket: (next) => {
     async.eachSeries( demozones, (d, nextDemozone) => {
       var i = 0;
-      var interval = undefined;
+      d.interval = _.noop();
+      d.cursor  = _.noop();
+      d.running = false;
       d.app = express();
       d.server = https.createServer(options, d.app);
-      d.io = require('socket.io')(d.server, {'pingInterval': pingInterval, 'pingTimeout': pingTimeout});
-      d.io.on('connection', function (socket) {
-        log.info(d.demozone,"Connected!!");
-        socket.conn.on('heartbeat', function() {
-          log.verbose(d.demozone,'heartbeat');
+      d.ociBridgeClient = restify.createJsonClient({
+        url: OCIBRIDGEHOST,
+        connectTimeout: 10000,
+        requestTimeout: 10000,
+        retry: false,
+        rejectUnauthorized: false,
+        headers: {
+          "content-type": "application/json",
+          "accept": "application/json"
+        }
+      });
+      d.sessions = [];
+      d.io = require('socket.io')(d.server, {'pingInterval': PINGINTERVAL, 'pingTimeout': PINGTIMEOUT});
+      d.io.on('connection', (socket) => {
+        var sessionUUID = uuid.generate();
+        socket.uuid = sessionUUID;
+        log.info(d.demozone,"Client connected with UUID: " + socket.uuid);
+        socket.conn.on('heartbeat', () => {
+          log.verbose(d.demozone + "-" + socket.uuid,'heartbeat');
         });
-        socket.on('disconnect', function () {
-          log.info(d.demozone,"Socket disconnected");
-          if (interval) { clearInterval(interval) };
+        d.sessions.push({ uuid: socket.uuid, socket: socket});
+        socket.on('disconnect', () => {
+          log.info(d.demozone + "-" + socket.uuid,"Socket disconnected");
+          // remove session from array
+          _.remove(d.sessions, { uuid: socket.uuid });
+          log.verbose(d.demozone ,"Remaining opened sessions: " + d.sessions.length);
+          if (d.sessions.length == 0 && d.interval) {
+            log.verbose(d.demozone,"No opened sessions left, clearing message pooling interval");
+            clearInterval(d.interval);
+            d.interval = _.noop();
+          };
         });
         socket.on('error', function (err) {
-          log.error(d.demozone,"Error: " + err);
+          log.error(d.demozone + "-" + socket.uuid,"Error: " + err);
         });
-
-        var msg = {
-          key: "MADRID,3344,PIZZA ORDERED",
-          value: "test message"
-        }
-        socket.emit('message', JSON.stringify(msg));
-        /**
-        interval = setInterval(() => {
-          var msg = 'Message number ' + (++i);
-          console.log("Emitting: " + msg)
-          socket.emit('message', msg);
-        }, 1000);
-        **/
+        if (!d.interval) {
+          log.info(d.demozone,"Starting message pooling interval");
+          d.interval = setInterval((s) => {
+            if (s.running == true) {
+              // Previous interval is still running. Exit.
+              return;
+            }
+            s.running = true;
+            if (!s.cursor) {
+              // No cursor, so we need to create one
+              let result = createCursor(s);
+              if (!result.value) {
+                log.error(STREAMING, "Error creating cursor: " + JSON.stringify(result));
+                s.running = false;
+                return;
+              }
+              s.cursor = result.value;
+            }
+            // First try to get messages
+            let result = getMessages(s);
+            console.log(result);
+            s.running = false;
+          }, POOLINGINTERVAL, d);
+        };
       });
-      d.server.listen(d.websocketport, function() {
+      d.server.listen(d.websocketport, () => {
         log.info(WEBSOCKET,"Created WS server at port: " + d.websocketport + " for demozone: " + d.demozone);
-        console.log(d);
         next();
       });
     }, (err) => {
@@ -141,3 +182,34 @@ async.series( {
     log.error("Error during initialization: " + err);
   }
 });
+
+async function getMessages(d) {
+  var promise = new Promise((resolve, reject) => {
+    d.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', d.streamid) + "?" + qs.stringify({ cursor: d.cursor }), body, (err, req, res, data) => {
+      if (err) {
+        reject(err);
+      } else if (res.statusCode == 200) {
+        resolve(data);
+      } else {
+        reject(res);
+      }
+    });
+  });
+  return await promise;
+};
+
+async function createCursor(d) {
+  var promise = new Promise((resolve, reject) => {
+    let body = { partition: "0", type: "LATEST" };
+    d.ociBridgeClient.post(STREAMINGCREATECURSOR.replace('{streamid}', d.streamid), body, (err, req, res, data) => {
+      if (err) {
+        reject(err);
+      } else if (res.statusCode == 200) {
+        resolve(data);
+      } else {
+        reject(res);
+      }
+    });
+  });
+  return await promise;
+};
