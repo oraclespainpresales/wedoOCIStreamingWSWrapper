@@ -152,6 +152,12 @@ async.series( {
                 return;
               }
               s.running = true;
+              if (s.io.sockets.server.engine.clientsCount == 0 && s.interval) {
+                log.verbose(d.demozone,"No opened sessions left, clearing message pooling interval");
+                clearInterval(d.interval);
+                d.interval = _.noop();
+                return;
+              };
               var messages = [];
               async.series({
                 cursor: (nextStreaming) => {
