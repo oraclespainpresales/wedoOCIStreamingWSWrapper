@@ -128,7 +128,7 @@ async.series( {
       d.io = require('socket.io')(d.server, {'pingInterval': PINGINTERVAL, 'pingTimeout': PINGTIMEOUT});
       d.io.on('connection', (socket) => {
         socket.conn.on('heartbeat', () => {
-          log.verbose(d.demozone + "-" + socket.uuid,'heartbeat');
+          log.verbose(d.demozone,'heartbeat');
         });
         socket.on('error', function (err) {
           log.error(d.demozone,"Error: " + err);
@@ -147,6 +147,7 @@ async.series( {
             d.interval = setInterval((s) => {
               if (s.running == true) {
                 // Previous interval is still running. Exit.
+                log.verbose(STREAMING,"ignoring...");
                 return;
               }
               s.running = true;
@@ -172,10 +173,12 @@ async.series( {
                   }
                 },
                 retrieveMessages: (nextStreaming) => {
+                  log.verbose(STREAMING,"Fetching messages...");
                   s.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', s.streamid) + "?" + qs.stringify({ cursor: s.cursor }), (err, req, res, data) => {
                     if (err) {
                       nextStreaming(err.message);
                     } else if (res.statusCode == 200) {
+                      log.verbose(STREAMING,"Fetching " + data.length + " messages");
                       if (data.length > 0) {
                         log.verbose(STREAMING,"Retrieved " + data.lebgth + " messages");
                         _.each(data, (m) => {
