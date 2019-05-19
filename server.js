@@ -172,6 +172,8 @@ async.series( {
                         nextStreaming("Error creating cursor: " + res.statusCode);
                       }
                     });
+                  } else {
+                    nextStreaming();
                   }
                 },
                 retrieveMessages: (nextStreaming) => {
