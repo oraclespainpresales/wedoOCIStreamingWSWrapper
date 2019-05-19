@@ -153,7 +153,7 @@ async.series( {
               }
               console.log("Setting to YES");
               s.running = "YES";
-              let messages = [];
+              var messages = [];
               async.series({
                 cursor: (nextStreaming) => {
                   if (!s.cursor) {
@@ -184,7 +184,7 @@ async.series( {
                     } else if (res.statusCode == 200) {
                       log.verbose(STREAMING,"Fetching " + data.length + " messages");
                       if (data.length > 0) {
-                        log.verbose(STREAMING,"Retrieved " + data.lebgth + " messages");
+                        log.verbose(STREAMING,"Retrieved " + data.length + " messages");
                         _.each(data, (m) => {
                           let msg = {
                             key: Buffer.from(m.key, 'base64').toString(),
