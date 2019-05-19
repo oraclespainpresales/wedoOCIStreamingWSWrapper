@@ -215,6 +215,7 @@ async function createCursor(d) {
         reject(err);
       } else if (res.statusCode == 200) {
         console.log("ok");
+        console.log(data);
         resolve(data);
       } else {
         console.log("ok with error");
