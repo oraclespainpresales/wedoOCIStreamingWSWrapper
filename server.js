@@ -212,6 +212,7 @@ async.series( {
                 if (err) {
                   log.error("Error during streaming process: " + err);
                 }
+                console.log("LLEGO AQUI");
                 s.running = "NO";
               });
             }, POOLINGINTERVAL, d);
