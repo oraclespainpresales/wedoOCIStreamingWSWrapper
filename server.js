@@ -151,6 +151,7 @@ async.series( {
                 log.verbose(STREAMING,"ignoring...");
                 return;
               }
+              console.log("Setting to YES");
               s.running = "YES";
               let messages = [];
               async.series({
@@ -212,7 +213,7 @@ async.series( {
                 if (err) {
                   log.error("Error during streaming process: " + err);
                 }
-                console.log("LLEGO AQUI");
+                console.log("Setting to NO");
                 s.running = "NO";
               });
             }, POOLINGINTERVAL, d);
