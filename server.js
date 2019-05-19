@@ -130,11 +130,8 @@ async.series( {
       d.io.on('connection', (socket) => {
 
         console.log("++++++++++++++++++++++++++++++++++++");
-        console.log(socket);
-        console.log("************************************");
-        console.log(d.io);
-        console.log("************************************");
-        console.log(d.io.sockets.clients());
+        console.log(d.io.sockets.clientsCount);
+        console.log(d.io.sockets.engine.clientsCount);
         console.log("++++++++++++++++++++++++++++++++++++");
 
 
