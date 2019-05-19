@@ -224,6 +224,8 @@ async function createCursor(d) {
       }
     });
   });
+  console("1");
   let result = await promise;
+  console("2");
   return result;
 };
