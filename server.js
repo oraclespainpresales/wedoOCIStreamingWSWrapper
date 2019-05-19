@@ -201,7 +201,8 @@ async function getMessages(d) {
       }
     });
   });
-  return await promise;
+  let result = await promise;
+  return result;
 };
 
 async function createCursor(d) {
@@ -223,5 +224,6 @@ async function createCursor(d) {
       }
     });
   });
-  return await promise;
+  let result = await promise;
+  return result;
 };
