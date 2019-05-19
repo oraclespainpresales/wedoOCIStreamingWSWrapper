@@ -127,6 +127,7 @@ async.series( {
       d.ociBridgeClient.basicAuth(OCIBRIDGEUSERNAME, OCIBRIDGEPASSWORD);
       d.io = require('socket.io')(d.server, {'pingInterval': PINGINTERVAL, 'pingTimeout': PINGTIMEOUT});
       d.io.on('connection', (socket) => {
+        log.info(d.demozone,"New client connected. Total number of clients: " + d.io.sockets.server.engine.clientsCount);
         socket.conn.on('heartbeat', () => {
           log.verbose(d.demozone,'heartbeat');
         });
