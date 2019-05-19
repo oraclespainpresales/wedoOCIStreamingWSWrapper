@@ -131,6 +131,7 @@ async.series( {
 
         console.log("++++++++++++++++++++++++++++++++++++");
         console.log(d.io.sockets.server.engine);
+        console.log(io.sockets.adapter.rooms);
         console.log("++++++++++++++++++++++++++++++++++++");
 
 
