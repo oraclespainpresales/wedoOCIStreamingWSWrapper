@@ -109,7 +109,7 @@ async.series( {
       var i = 0;
       d.interval = _.noop();
       d.cursor  = _.noop();
-      d.running = "NO";
+      d.running = false;
       d.app = express();
       d.server = https.createServer(options, d.app);
       d.ociBridgeClient = restify.createJsonClient({
@@ -146,13 +146,12 @@ async.series( {
             log.info(d.demozone,"Starting message pooling interval");
             d.interval = setInterval((s) => {
               console.log(s.running);
-              if (s.running === "YES") {
+              if (s.running == true) {
                 // Previous interval is still running. Exit.
                 log.verbose(STREAMING,"ignoring...");
                 return;
               }
-              console.log("Setting to YES");
-              s.running = "YES";
+              s.running = true;
               var messages = [];
               async.series({
                 cursor: (nextStreaming) => {
@@ -160,7 +159,7 @@ async.series( {
                     // No cursor, so we need to create one
                     log.verbose(STREAMING,"No cursors available");
                     let body = { partition: "0", type: "LATEST" };
-                    d.ociBridgeClient.post(STREAMINGCREATECURSOR.replace('{streamid}', d.streamid), body, (err, req, res, data) => {
+                    s.ociBridgeClient.post(STREAMINGCREATECURSOR.replace('{streamid}', s.streamid), body, (err, req, res, data) => {
                       if (err) {
                         nextStreaming(err.message);
                         return;
@@ -203,12 +202,11 @@ async.series( {
                   });
                 },
                 sendMessages: (nextStreaming) => {
-                  console.log(messages);
-                  console.log(s.sessions);
-                  if (messages.length > 0 && s.sessions.length > 0) {
+                  if (messages.length > 0) {
                     _.each(messages, (message) => {
                       // Emit message to all connected clients
                       s.io.sockets.emit('message', JSON.stringify());
+                      log.verbose(STREAMING,"Messages successfully emitted...");
                     });
                   }
                   nextStreaming();
@@ -217,8 +215,7 @@ async.series( {
                 if (err) {
                   log.error("Error during streaming process: " + err);
                 }
-                console.log("Setting to NO");
-                s.running = "NO";
+                s.running = false;
               });
             }, POOLINGINTERVAL, d);
           };
