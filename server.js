@@ -9,6 +9,7 @@ const express = require('express')
     , uuid = require('shortid')
     , restify = require('restify-clients')
     , log = require('npmlog-ts')
+    , config = require('config')
     , fs = require('fs')
 ;
 
@@ -41,6 +42,8 @@ const PROCESS   = "PROCESS"
 
 const DBHOST                = "https://apex.wedoteam.io"
     , OCIBRIDGEHOST         = "https://local.infra.wedoteam.io:2443"
+    , OCIBRIDGEUSERNAME     = config.get('ociwrapper.username')
+    , OCIBRIDGEPASSWORD     = config.get('ociwrapper.password')
     , DBURI                 = '/ords/pdb1/wedo/common'
     , STREAMINGSETUP        = '/streaming/setup'
     , STREAMINGCREATECURSOR = '/20180418/streams/{streamid}/cursors'
@@ -120,6 +123,7 @@ async.series( {
           "accept": "application/json"
         }
       });
+      d.ociBridgeClient.basicAuth(OCIBRIDGEUSERNAME, OCIBRIDGEPASSWORD);
       d.sessions = [];
       d.io = require('socket.io')(d.server, {'pingInterval': PINGINTERVAL, 'pingTimeout': PINGTIMEOUT});
       d.io.on('connection', (socket) => {

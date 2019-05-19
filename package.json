@@ -19,6 +19,7 @@
   "homepage": "https://github.com/oraclespainpresales/wedoOCIStreamingWSWrapper#readme",
   "dependencies": {
     "async": "^2.6.2",
+    "config": "^3.1.0",
     "express": "^4.16.4",
     "lodash": "^4.17.11",
     "npmlog-ts": "0.0.1",
