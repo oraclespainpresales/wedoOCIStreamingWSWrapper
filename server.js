@@ -180,7 +180,9 @@ async.series( {
                     if (err) {
                       nextStreaming(err.message);
                     } else if (res.statusCode == 200) {
-                      console.log(res.headers);
+                      if (res.headers["opc-next-cursor"]) {
+                        s.cursor = res.headers["opc-next-cursor"];
+                      }
                       log.verbose(STREAMING,"Fetching " + data.length + " messages");
                       if (data.length > 0) {
                         log.verbose(STREAMING,"Retrieved " + data.length + " messages");
