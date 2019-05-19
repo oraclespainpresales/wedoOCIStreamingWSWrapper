@@ -145,7 +145,6 @@ async.series( {
           if (!d.interval) {
             log.info(d.demozone,"Starting message pooling interval");
             d.interval = setInterval((s) => {
-              console.log(s.running);
               if (s.running == true) {
                 // Previous interval is still running. Exit.
                 log.verbose(STREAMING,"ignoring...");
@@ -181,6 +180,7 @@ async.series( {
                     if (err) {
                       nextStreaming(err.message);
                     } else if (res.statusCode == 200) {
+                      console.log(res.headers);
                       log.verbose(STREAMING,"Fetching " + data.length + " messages");
                       if (data.length > 0) {
                         log.verbose(STREAMING,"Retrieved " + data.length + " messages");
