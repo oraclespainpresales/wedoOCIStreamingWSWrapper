@@ -135,12 +135,7 @@ async.series( {
           log.error(d.demozone,"Error: " + err);
         });
         socket.on('disconnect', () => {
-          log.info(d.demozone ,"Client disconnected. Remaining opened sessions: " + d.io.sockets.server.engine.clientsCount);
-          if (d.io.sockets.server.engine.clientsCount == 0 && d.interval) {
-            log.verbose(d.demozone,"No opened sessions left, clearing message pooling interval");
-            clearInterval(d.interval);
-            d.interval = _.noop();
-          };
+          log.info(d.demozone ,"Client disconnected");
         });
         if (d.io.sockets.server.engine.clientsCount > 0) {
           if (!d.interval) {
@@ -156,6 +151,7 @@ async.series( {
                 log.verbose(d.demozone,"No opened sessions left, clearing message pooling interval");
                 clearInterval(d.interval);
                 d.interval = _.noop();
+                s.running = false;
                 return;
               };
               var messages = [];
@@ -182,7 +178,7 @@ async.series( {
                   }
                 },
                 retrieveMessages: (nextStreaming) => {
-                  log.verbose(STREAMING,"Fetching messages...");
+//                  log.verbose(STREAMING,"Fetching messages...");
                   s.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', s.streamid) + "?" + qs.stringify({ cursor: s.cursor }), (err, req, res, data) => {
                     if (err) {
                       nextStreaming(err.message);
@@ -190,7 +186,7 @@ async.series( {
                       if (res.headers["opc-next-cursor"]) {
                         s.cursor = res.headers["opc-next-cursor"];
                       }
-                      log.verbose(STREAMING,"Fetching " + data.length + " messages");
+//                      log.verbose(STREAMING,"Fetching " + data.length + " messages");
                       if (data.length > 0) {
                         log.verbose(STREAMING,"Retrieved " + data.length + " messages");
                         _.each(data, (m) => {
