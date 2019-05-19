@@ -145,7 +145,7 @@ async.series( {
           if (!d.interval) {
             log.info(d.demozone,"Starting message pooling interval");
             d.interval = setInterval((s) => {
-              if (s.running == true) {
+              if (s.running === true) {
                 // Previous interval is still running. Exit.
                 log.verbose(STREAMING,"ignoring...");
                 return;
