@@ -163,6 +163,7 @@ async.series( {
                         return;
                       } else if (res.statusCode == 200) {
                         s.cursor = data.value;
+                        log.verbose(STREAMING,"Cursor successfully created");
                         nextStreaming();
                       } else {
                         nextStreaming("Error creating cursor: " + res.statusCode);
@@ -171,7 +172,7 @@ async.series( {
                   }
                 },
                 retrieveMessages: (nextStreaming) => {
-                  d.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', d.streamid) + "?" + qs.stringify({ cursor: d.cursor }), body, (err, req, res, data) => {
+                  s.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', s.streamid) + "?" + qs.stringify({ cursor: s.cursor }), (err, req, res, data) => {
                     if (err) {
                       nextStreaming(err.message);
                     } else if (res.statusCode == 200) {
@@ -189,7 +190,7 @@ async.series( {
                     } else {
                       // Invalid cursor?
                       log.error(STREAMING,"Error retrieving messages: " + res.statusCode + ", :" + data);
-                      d.cursor = _.noop();
+                      s.cursor = _.noop();
                       nextStreaming();
                     }
                   });
