@@ -120,7 +120,8 @@ async.series( {
         rejectUnauthorized: false,
         headers: {
           "content-type": "application/json",
-          "accept": "application/json"
+          "accept": "application/json",
+          "wedo-service-uri": d.serviceuri
         }
       });
       d.ociBridgeClient.basicAuth(OCIBRIDGEUSERNAME, OCIBRIDGEPASSWORD);
