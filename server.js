@@ -218,7 +218,8 @@ async.series( {
                       session.socket.emit('message', JSON.stringify())
                     })
                   });
-                nextStreaming();
+                  nextStreaming();
+                }
               }
             }, (err, results) => {
               if (err) {
