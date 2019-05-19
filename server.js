@@ -48,7 +48,7 @@ const DBHOST                = "https://apex.wedoteam.io"
     , STREAMINGSETUP        = '/streaming/setup'
     , STREAMINGCREATECURSOR = '/20180418/streams/{streamid}/cursors'
     , STREAMINGPOOLMESSAGES = '/20180418/streams/{streamid}/messages'
-    , POOLINGINTERVAL       = 100000
+    , POOLINGINTERVAL       = 1000
 ;
 
 const PINGINTERVAL = 25000
@@ -125,107 +125,93 @@ async.series( {
         }
       });
       d.ociBridgeClient.basicAuth(OCIBRIDGEUSERNAME, OCIBRIDGEPASSWORD);
-      d.sessions = [];
       d.io = require('socket.io')(d.server, {'pingInterval': PINGINTERVAL, 'pingTimeout': PINGTIMEOUT});
       d.io.on('connection', (socket) => {
-
-        console.log("++++++++++++++++++++++++++++++++++++");
-        console.log(d.io.sockets.server.engine.clientsCount);
-//        console.log(d.io.sockets.adapter.rooms);
-        console.log("++++++++++++++++++++++++++++++++++++");
-
-
-        var sessionUUID = uuid.generate();
-        socket.uuid = sessionUUID;
-        log.info(d.demozone,"Client connected with UUID: " + socket.uuid);
         socket.conn.on('heartbeat', () => {
           log.verbose(d.demozone + "-" + socket.uuid,'heartbeat');
         });
-        d.sessions.push({ uuid: socket.uuid, socket: socket});
+        socket.on('error', function (err) {
+          log.error(d.demozone,"Error: " + err);
+        });
         socket.on('disconnect', () => {
-          log.info(d.demozone + "-" + socket.uuid,"Socket disconnected");
-          // remove session from array
-          _.remove(d.sessions, { uuid: socket.uuid });
-          log.verbose(d.demozone ,"Remaining opened sessions: " + d.sessions.length);
-          if (d.sessions.length == 0 && d.interval) {
+          log.info(d.demozone ,"Client disconnected. Remaining opened sessions: " + d.io.sockets.server.engine.clientsCount);
+          if (d.io.sockets.server.engine.clientsCount == 0 && d.interval) {
             log.verbose(d.demozone,"No opened sessions left, clearing message pooling interval");
             clearInterval(d.interval);
             d.interval = _.noop();
           };
         });
-        socket.on('error', function (err) {
-          log.error(d.demozone + "-" + socket.uuid,"Error: " + err);
-        });
-        if (!d.interval) {
-          log.info(d.demozone,"Starting message pooling interval");
-          d.interval = setInterval((s) => {
-            if (s.running == true) {
-              // Previous interval is still running. Exit.
-              return;
-            }
-            s.running = true;
-            let messages = [];
-            async.series({
-              cursor: (nextStreaming) => {
-                if (!s.cursor) {
-                  // No cursor, so we need to create one
-                  log.verbose(STREAMING,"No cursors available");
-                  let body = { partition: "0", type: "LATEST" };
-                  d.ociBridgeClient.post(STREAMINGCREATECURSOR.replace('{streamid}', d.streamid), body, (err, req, res, data) => {
+        if (d.io.sockets.server.engine.clientsCount > 0) {
+          if (!d.interval) {
+            log.info(d.demozone,"Starting message pooling interval");
+            d.interval = setInterval((s) => {
+              if (s.running == true) {
+                // Previous interval is still running. Exit.
+                return;
+              }
+              s.running = true;
+              let messages = [];
+              async.series({
+                cursor: (nextStreaming) => {
+                  if (!s.cursor) {
+                    // No cursor, so we need to create one
+                    log.verbose(STREAMING,"No cursors available");
+                    let body = { partition: "0", type: "LATEST" };
+                    d.ociBridgeClient.post(STREAMINGCREATECURSOR.replace('{streamid}', d.streamid), body, (err, req, res, data) => {
+                      if (err) {
+                        nextStreaming(err.message);
+                        return;
+                      } else if (res.statusCode == 200) {
+                        s.cursor = data.value;
+                        nextStreaming();
+                      } else {
+                        nextStreaming("Error creating cursor: " + res.statusCode);
+                      }
+                    });
+                  }
+                },
+                retrieveMessages: (nextStreaming) => {
+                  d.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', d.streamid) + "?" + qs.stringify({ cursor: d.cursor }), body, (err, req, res, data) => {
                     if (err) {
                       nextStreaming(err.message);
-                      return;
                     } else if (res.statusCode == 200) {
-                      s.cursor = data.value;
+                      if (data.length > 0) {
+                        log.verbose(STREAMING,"Retrieved " + data.lebgth + " messages");
+                        _.each(data, (m) => {
+                          let msg = {
+                            key: Buffer.from(m.key, 'base64').toString(),
+                            value: Buffer.from(m.value, 'base64').toString(),
+                          };
+                          messages.push(msg);
+                        });
+                      }
                       nextStreaming();
                     } else {
-                      nextStreaming("Error creating cursor: " + res.statusCode);
+                      // Invalid cursor?
+                      log.error(STREAMING,"Error retrieving messages: " + res.statusCode + ", :" + data);
+                      d.cursor = _.noop();
+                      nextStreaming();
                     }
                   });
-                }
-              },
-              retrieveMessages: (nextStreaming) => {
-                d.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', d.streamid) + "?" + qs.stringify({ cursor: d.cursor }), body, (err, req, res, data) => {
-                  if (err) {
-                    nextStreaming(err.message);
-                  } else if (res.statusCode == 200) {
-                    if (data.length > 0) {
-                      log.verbose(STREAMING,"Retrieved " + data.lebgth + " messages");
-                      _.each(data, (m) => {
-                        let msg = {
-                          key: Buffer.from(m.key, 'base64').toString(),
-                          value: Buffer.from(m.value, 'base64').toString(),
-                        };
-                        messages.push(msg);
-                      });
-                    }
-                    nextStreaming();
-                  } else {
-                    // Invalid cursor?
-                    log.error(STREAMING,"Error retrieving messages: " + res.statusCode + ", :" + data);
-                    d.cursor = _.noop();
+                },
+                sendMessages: (nextStreaming) => {
+                  if (messages.length > 0 && s.sessions.length > 0) {
+                    _.each(messages, (message) => {
+                      // Emit message to all connected clients
+                      s.io.sockets.emit('message', JSON.stringify());
+                    });
                     nextStreaming();
                   }
-                });
-              },
-              sendMessages: (nextStreaming) => {
-                if (messages.length > 0 && s.sessions.length > 0) {
-                  _.each(s.sessions, (session) => {
-                    _.each(messages, (message) => {
-                      session.socket.emit('message', JSON.stringify())
-                    })
-                  });
-                  nextStreaming();
                 }
-              }
-            }, (err, results) => {
-              if (err) {
-                log.error("Error during streaming process: " + err);
-              }
-              s.running = false;
-            });
-          }, POOLINGINTERVAL, d);
-        };
+              }, (err, results) => {
+                if (err) {
+                  log.error("Error during streaming process: " + err);
+                }
+                s.running = false;
+              });
+            }, POOLINGINTERVAL, d);
+          };
+        }
       });
       d.server.listen(d.websocketport, () => {
         log.info(WEBSOCKET,"Created WS server at port: " + d.websocketport + " for demozone: " + d.demozone);
