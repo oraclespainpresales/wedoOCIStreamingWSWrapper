@@ -48,7 +48,7 @@ const DBHOST                = "https://apex.wedoteam.io"
     , STREAMINGSETUP        = '/streaming/setup'
     , STREAMINGCREATECURSOR = '/20180418/streams/{streamid}/cursors'
     , STREAMINGPOOLMESSAGES = '/20180418/streams/{streamid}/messages'
-    , POOLINGINTERVAL       = 1000
+    , POOLINGINTERVAL       = 100000
 ;
 
 const PINGINTERVAL = 25000
@@ -128,6 +128,16 @@ async.series( {
       d.sessions = [];
       d.io = require('socket.io')(d.server, {'pingInterval': PINGINTERVAL, 'pingTimeout': PINGTIMEOUT});
       d.io.on('connection', (socket) => {
+
+        console.log("++++++++++++++++++++++++++++++++++++");
+        console.log(socket);
+        console.log("************************************");
+        console.log(d.io);
+        console.log("************************************");
+        console.log(d.io.sockets.clients());
+        console.log("++++++++++++++++++++++++++++++++++++");
+
+
         var sessionUUID = uuid.generate();
         socket.uuid = sessionUUID;
         log.info(d.demozone,"Client connected with UUID: " + socket.uuid);
@@ -157,29 +167,65 @@ async.series( {
               return;
             }
             s.running = true;
-            if (!s.cursor) {
-              // No cursor, so we need to create one
-              log.verbose(STREAMING,"No cursors available");
-              console.log("1");
-              createCursor(s)
-                .then(() => {
-                  console.log("11");
-                })
-                .catch(() => {
-                  console.log("22");
+            let messages = [];
+            async.series({
+              cursor: (nextStreaming) => {
+                if (!s.cursor) {
+                  // No cursor, so we need to create one
+                  log.verbose(STREAMING,"No cursors available");
+                  let body = { partition: "0", type: "LATEST" };
+                  d.ociBridgeClient.post(STREAMINGCREATECURSOR.replace('{streamid}', d.streamid), body, (err, req, res, data) => {
+                    if (err) {
+                      nextStreaming(err.message);
+                      return;
+                    } else if (res.statusCode == 200) {
+                      s.cursor = data.value;
+                      nextStreaming();
+                    } else {
+                      nextStreaming("Error creating cursor: " + res.statusCode);
+                    }
+                  });
+                }
+              },
+              retrieveMessages: (nextStreaming) => {
+                d.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', d.streamid) + "?" + qs.stringify({ cursor: d.cursor }), body, (err, req, res, data) => {
+                  if (err) {
+                    nextStreaming(err.message);
+                  } else if (res.statusCode == 200) {
+                    if (data.length > 0) {
+                      log.verbose(STREAMING,"Retrieved " + data.lebgth + " messages");
+                      _.each(data, (m) => {
+                        let msg = {
+                          key: Buffer.from(m.key, 'base64').toString(),
+                          value: Buffer.from(m.value, 'base64').toString(),
+                        };
+                        messages.push(msg);
+                      });
+                    }
+                    nextStreaming();
+                  } else {
+                    // Invalid cursor?
+                    log.error(STREAMING,"Error retrieving messages: " + res.statusCode + ", :" + data);
+                    d.cursor = _.noop();
+                    nextStreaming();
+                  }
                 });
-              console.log("7");
-              if (!result.value) {
-                log.error(STREAMING, "Error creating cursor: " + JSON.stringify(result));
-                s.running = false;
-                return;
+              },
+              sendMessages: (nextStreaming) => {
+                if (messages.length > 0 && s.sessions.length > 0) {
+                  _.each(s.sessions, (session) => {
+                    _.each(messages, (message) => {
+                      session.socket.emit('message', JSON.stringify())
+                    })
+                  });
+                nextStreaming();
               }
-              s.cursor = result.value;
-            }
-            // First try to get messages
-            let result = getMessages(s);
-            console.log(result);
-            s.running = false;
+            }, (err, results) => {
+              if (err) {
+                log.error("Error during streaming process: " + err);
+              }
+              s.running = false;
+            });
           }, POOLINGINTERVAL, d);
         };
       });
@@ -199,15 +245,6 @@ async.series( {
 
 async function getMessages(d) {
   var promise = new Promise((resolve, reject) => {
-    d.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', d.streamid) + "?" + qs.stringify({ cursor: d.cursor }), body, (err, req, res, data) => {
-      if (err) {
-        reject(err);
-      } else if (res.statusCode == 200) {
-        resolve(data);
-      } else {
-        reject(res);
-      }
-    });
   });
   let result = await promise;
   return result;
@@ -219,23 +256,6 @@ function createCursor(d) {
 //  var promise = new Promise((resolve, reject) => {
   return new Promise((resolve, reject) => {
     console.log("3");
-    let body = { partition: "0", type: "LATEST" };
-    d.ociBridgeClient.post(STREAMINGCREATECURSOR.replace('{streamid}', d.streamid), body, (err, req, res, data) => {
-      console.log("4");
-      console.log("returned");
-      if (err) {
-        console.log("error");
-        console.log(err);
-        reject(err);
-      } else if (res.statusCode == 200) {
-        console.log("ok");
-        console.log(data);
-        resolve(data);
-      } else {
-        console.log("ok with error");
-        reject(res);
-      }
-    });
   });
   /**
   console.log("5");
