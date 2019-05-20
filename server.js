@@ -13,10 +13,6 @@ const express = require('express')
     , fs = require('fs')
 ;
 
-// Instantiate classes & servers
-const wsURI     = '/socket.io'
-    , restURI   = '/event/:eventname';
-
 // ************************************************************************
 // Main code STARTS HERE !!
 // ************************************************************************
@@ -40,6 +36,7 @@ const PROCESS   = "PROCESS"
     , DB        = "DB"
 ;
 
+// Instantiate classes & servers
 const DBHOST                = "https://apex.wedoteam.io"
     , OCIBRIDGEHOST         = "https://local.infra.wedoteam.io:2443"
     , OCIBRIDGEUSERNAME     = config.get('ociwrapper.username')
@@ -49,10 +46,8 @@ const DBHOST                = "https://apex.wedoteam.io"
     , STREAMINGCREATECURSOR = '/20180418/streams/{streamid}/cursors'
     , STREAMINGPOOLMESSAGES = '/20180418/streams/{streamid}/messages'
     , POOLINGINTERVAL       = 1000
-;
-
-const PINGINTERVAL = 25000
-    , PINGTIMEOUT  = 60000
+    , PINGINTERVAL          = 25000
+    , PINGTIMEOUT           = 60000
 ;
 
 // Main handlers registration - BEGIN
@@ -129,7 +124,7 @@ async.series( {
       d.io.on('connection', (socket) => {
         log.info(d.demozone,"New client connected. Total number of clients: " + d.io.sockets.server.engine.clientsCount);
         socket.conn.on('heartbeat', () => {
-          log.verbose(d.demozone,'heartbeat');
+//          log.verbose(d.demozone,'heartbeat');
         });
         socket.on('error', function (err) {
           log.error(d.demozone,"Error: " + err);
