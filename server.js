@@ -146,6 +146,7 @@ async.series( {
                 log.verbose(d.demozone,"No opened sessions left, clearing message pooling interval");
                 clearInterval(d.interval);
                 d.interval = _.noop();
+                s.cursor = _.noop();
                 s.running = false;
                 return;
               };
