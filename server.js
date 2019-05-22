@@ -176,6 +176,8 @@ async.series( {
 //                  log.verbose(STREAMING,"Fetching messages...");
                   s.ociBridgeClient.get(STREAMINGPOOLMESSAGES.replace('{streamid}', s.streamid) + "?" + qs.stringify({ cursor: s.cursor }), (err, req, res, data) => {
                     if (err) {
+                      // Let's get rid of the cursor just in case
+                      s.cursor = _.noop();
                       nextStreaming(err.message);
                     } else if (res.statusCode == 200) {
                       if (res.headers["opc-next-cursor"]) {
