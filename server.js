@@ -237,25 +237,3 @@ async.series( {
     log.error("Error during initialization: " + err);
   }
 });
-
-async function getMessages(d) {
-  var promise = new Promise((resolve, reject) => {
-  });
-  let result = await promise;
-  return result;
-};
-
-//async function createCursor(d)
-function createCursor(d) {
-  console.log("2");
-//  var promise = new Promise((resolve, reject) => {
-  return new Promise((resolve, reject) => {
-    console.log("3");
-  });
-  /**
-  console.log("5");
-  let result = await promise;
-  console.log("6");
-  return result;
-  **/
-};
