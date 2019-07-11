@@ -96,7 +96,6 @@ async.series( {
       }
       var jBody = JSON.parse(res.body);
       demozones = _.cloneDeep(jBody.items);
-      console.log(demozones);
       next();
     });
   },
@@ -227,7 +226,7 @@ async.series( {
       });
       d.server.listen(d.websocketport, () => {
         log.info(WEBSOCKET,"Created WS server at port: " + d.websocketport + " for demozone: " + d.demozone);
-        next();
+        nextDemozone();
       });
     }, (err) => {
       next(err);
