@@ -96,6 +96,7 @@ async.series( {
       }
       var jBody = JSON.parse(res.body);
       demozones = _.cloneDeep(jBody.items);
+      console.log(demozones);
       next();
     });
   },
